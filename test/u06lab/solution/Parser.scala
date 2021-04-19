@@ -11,7 +11,10 @@ class TryParsers {
   def parserNTC = new NotTwoConsecutiveParser(Set('X', 'Y', 'Z'))
   // note we do not need a class name here, we use the structural type
   def parserNTCNE = new BasicParser(Set('X', 'Y', 'Z')) with NotTwoConsecutive[Char] with NonEmpty[Char]
-  def sparser: Parser[Char] = ??? // "abc".charParser()
+  // Bottom-up decorations: BasicParser -> NotTwoConsecutive -> NonEmpty ->  Parser
+
+  import BasicParser._ // si può evitare l'import in questo caso? non ho trovato il modo...
+  def sparser: Parser[Char] = "abc".charParser()
 
   @Test
   def testBasicParser = {

@@ -20,6 +20,12 @@ class BasicParser(chars: Set[Char]) extends Parser[Char] {
   override def end(): Boolean = true
 }
 
+object BasicParser {
+  implicit class RichString ( str : String ) {
+    def charParser() : Parser[Char] = new BasicParser(str.toSet)
+  }
+}
+
 trait NonEmpty[T] extends Parser[T]{
   private[this] var empty = true
   abstract override def parse(t: T) = {empty = false; super.parse(t)} // who is super??
@@ -29,40 +35,12 @@ trait NonEmpty[T] extends Parser[T]{
 class NonEmptyParser(chars: Set[Char]) extends BasicParser(chars) with NonEmpty[Char]
 
 trait NotTwoConsecutive[T] extends Parser[T]{
-  // ???
+  private[this] var lastChar:T = _
+  abstract override def parse(t: T) = if (t==lastChar) false else { lastChar = t; super.parse(t)}
+  abstract override def parseAll(seq: Seq[T]): Boolean = {lastChar = null.asInstanceOf[T]; super.parseAll(seq)}
 }
 
-class NotTwoConsecutiveParser(chars: Set[Char]) extends BasicParser(chars) // ??? with ...
+class NotTwoConsecutiveParser(chars: Set[Char]) extends BasicParser(chars) with NotTwoConsecutive[Char]
 
-
-object TryParsers extends App {
-  def parser = new BasicParser(Set('a','b','c'))
-  println(parser.parseAll("aabc".toList)) // true
-  println(parser.parseAll("aabcdc".toList)) // false
-  println(parser.parseAll("".toList)) // true
-
-  // Note NonEmpty being "stacked" on to a concrete class
-  // Bottom-up decorations: NonEmptyParser -> NonEmpty -> BasicParser -> Parser
-  def parserNE = new NonEmptyParser(Set('0','1'))
-  println(parserNE.parseAll("0101".toList)) // true
-  println(parserNE.parseAll("0123".toList)) // false
-  println(parserNE.parseAll(List())) // false
-
-  def parserNTC = new NotTwoConsecutiveParser(Set('X','Y','Z'))
-  println(parserNTC.parseAll("XYZ".toList)) // true
-  println(parserNTC.parseAll("XYYZ".toList)) // false
-  println(parserNTC.parseAll("".toList)) // true
-
-  // note we do not need a class name here, we use the structural type
-  def parserNTCNE = new BasicParser(Set('X','Y','Z')) with NotTwoConsecutive[Char] with NonEmpty[Char]
-  println(parserNTCNE.parseAll("XYZ".toList)) // true
-  println(parserNTCNE.parseAll("XYYZ".toList)) // false
-  println(parserNTCNE.parseAll("".toList)) // false
-
-  def sparser : Parser[Char] = ??? // "abc".charParser()
-  println(sparser.parseAll("aabc".toList)) // true
-  println(sparser.parseAll("aabcdc".toList)) // false
-  println(sparser.parseAll("".toList)) // true
-}
 
 
