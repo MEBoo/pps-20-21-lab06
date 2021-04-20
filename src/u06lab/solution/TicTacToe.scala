@@ -15,21 +15,26 @@ object TicTacToe extends App {
   // versione usando board.find()
   // def find(board: Board, x: Int, y: Int): Option[Player] = board find {m=>m.x == x && m.y==y} map (_.player)
 
+  // versione usando match
+  /*
   def find(board: Board, x: Int, y: Int): Option[Player] = board match {
     case Mark(`x`,`y`,p) :: _ => Some(p)
     case _ :: t => find(t,x,y)
     case _ => None
   }
+  */
+
+  // versione usando collect
+  def find(board: Board, x: Int, y: Int): Option[Player] = board collectFirst { case Mark(`x`, `y`, player) => player }
 
   def placeAnyMark(board: Board, player: Player): Seq[Board] = {
-    if (gameNotEnded(board)) {
-      var plays:List[Board] = List[Board]()
-      for (x <- 2 to 0 by -1;y <- 2 to 0 by -1;if find(board,x,y).isEmpty) plays = (Mark(x,y,player) :: board) :: plays
-      plays
-    } else
+    if (gameNotEnded(board))      // trick che serve per computeAnyGame che non valuta altri mark se il game è vinto
+      for (x <- 2 to 0 by -1;y <- 2 to 0 by -1;if find(board,x,y).isEmpty) yield Mark(x,y,player) :: board
+    else
       List(Nil)
   }
 
+  // senza stop se il game è vinto
   def computeAnyGame(player: Player, moves: Int): Stream[Game] = moves match {
     case 0 => Stream(List(Nil))
     case _ => for {
@@ -37,6 +42,8 @@ object TicTacToe extends App {
       play <- placeAnyMark(game.head,player.other)
     } yield play :: game
   }
+
+  // con stop se il game è vinto
   def computeAnyGameBetter(player: Player, moves: Int): Stream[Game] = moves match {
     case 0 => Stream(List(Nil))
     case _ => for {
@@ -45,13 +52,14 @@ object TicTacToe extends App {
     } yield if (play==Nil) game else play :: game
   }
 
-  def gameNotEnded(board: Board):Boolean = board forall (m => m match {
-    case Mark(0,0,p) => (!find(board, 1, 1).contains(p) || !find(board, 2, 2).contains(p)) && (!find(board, 0, 1).contains(p) || !find(board, 0, 2).contains(p)) && (!find(board, 1, 0).contains(p) || !find(board, 2, 0).contains(p))
-    case Mark(2,0,p) => (!find(board, 1, 1).contains(p) || !find(board, 0, 2).contains(p)) && (!find(board, 2, 1).contains(p) || !find(board, 2, 2).contains(p))
-    case Mark(1,0,p) => !find(board, 1, 1).contains(p) || !find(board, 1, 2).contains(p)
-    case Mark(0,y,p) => !find(board, 1, y).contains(p) || !find(board, 2, y).contains(p)
+  // un po' grezza ma efficiente, altrimenti bisognava ciclare in vari modi la board valutando rows / cols / diags alla ricerca di 3 elementi in fila
+  def gameNotEnded(board: Board):Boolean = board forall {
+    case Mark(0, 0, p) => (!find(board, 1, 1).contains(p) || !find(board, 2, 2).contains(p)) && (!find(board, 0, 1).contains(p) || !find(board, 0, 2).contains(p)) && (!find(board, 1, 0).contains(p) || !find(board, 2, 0).contains(p))
+    case Mark(2, 0, p) => (!find(board, 1, 1).contains(p) || !find(board, 0, 2).contains(p)) && (!find(board, 2, 1).contains(p) || !find(board, 2, 2).contains(p))
+    case Mark(1, 0, p) => !find(board, 1, 1).contains(p) || !find(board, 1, 2).contains(p)
+    case Mark(0, y, p) => !find(board, 1, y).contains(p) || !find(board, 2, y).contains(p)
     case _ => true
-  })
+  }
   
   def printBoards(game: Seq[Board]): Unit =
     for (y <- 0 to 2; board <- game.reverse; x <- 0 to 2) {
